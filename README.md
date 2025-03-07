@@ -39,9 +39,15 @@ Or downloaded from their releases page and put on your path:
 ```bash
 # Notice this might not be the earliest version!
 wget https://github.com/mgdm/htmlq/releases/download/v0.4.0/htmlq-x86_64-linux.tar.gz
-tar -xvzf htmlq-x86_64-linux.tar.gz
-sudo cp htmlq /usr/bin/  # or anywhere in your path
 ```
+```bash
+tar -xvzf htmlq-x86_64-linux.tar.gz
+```
+```bash
+sudo cp htmlq /usr/bin/
+```
+  # or anywhere in your path
+
 
 #### Arch Linux
 
@@ -70,7 +76,12 @@ brew install coreutils htmlq jq fzf mpv
 ```
 
 ## Usage
-`./wcofun` or `./wocfun search query here`
+```bash
+./wcofun
+```
+ or 
+ ```bash
+ ./wocfun search query here`
 If you want to download all episodes: `./wcofun -d Search query here`
 
 ```
