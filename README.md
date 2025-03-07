@@ -10,8 +10,12 @@ Watch videos from wcofun.com directly from your terminal. You can search, stream
 Just download [wcofun](https://raw.githubusercontent.com/matheusfillipe/wcofun.cli/master/wcofun) script, install the dependencies listed bellow and run it.
 
 ```bash
-wget https://raw.githubusercontent.com/matheusfillipe/wcofun.cli/master/wcofun
+git clone https://github.com/v1kt0r-ux/wcofun.cli.git
+```
+```bash
 chmod +x wcofun
+```
+```bash
 ./wcofun
 ```
 
