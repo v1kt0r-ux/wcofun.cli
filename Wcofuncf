@@ -1,0 +1,137 @@
+#!/bin/bash
+
+# Matheus Fillipe --- 25/01/2022
+# wcofun.com scraper MIT
+
+################################################################################
+# Things you might want to change:
+
+# MENU_CMD: Choose your menu.
+# NOTIFY_CMD: How to tell you about the status. Leave empty for a simple echo to stdout
+if [ -t 0 ] && [ -t 1 ] && [ -t 2 ] && [ -z ${DISPLAY+x} ]; then
+  then
+    MENU_CMD="fzf"
+    NOTIFY_CMD=""
+  else
+    MENU_CMD="rofi -dmenu -i"
+    # MENU_CMD="dmenu"
+    NOTIFY_CMD="notify-send WCOFUN"
+fi
+
+# User agent. Maybe you have problems with this
+UA="Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0"
+
+# Use system's curl if curl-impersonate is not found
+for curl in \
+    curl-impersonate \
+    curl-impersonate-chrome \
+    curl-impersonate-ff \
+    curl-impersonate-firefox \
+    curl
+do
+    hash "$curl" &>/dev/null && break
+done
+
+CURL_PATH="$curl"
+
+# Cloudflare bypass settings
+# Additional headers to help bypass Cloudflare
+CF_HEADERS=(
+  "-H" "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+  "-H" "Accept-Language: en-US,en;q=0.5"
+  "-H" "Accept-Encoding: gzip, deflate, br"
+  "-H" "Connection: keep-alive"
+  "-H" "Upgrade-Insecure-Requests: 1"
+  "-H" "Sec-Fetch-Dest: document"
+  "-H" "Sec-Fetch-Mode: navigate"
+  "-H" "Sec-Fetch-Site: none"
+  "-H" "Sec-Fetch-User: ?1"
+  "-H" "DNT: 1"
+)
+
+# Function to handle Cloudflare challenges
+cf_bypass() {
+  local url="$1"
+  local output
+  
+  # Try with standard curl first
+  output=$("$CURL_PATH" -s -L -A "$UA" "${CF_HEADERS[@]}" --max-time 20 --retry 3 --retry-delay 2 "$url")
+  
+  # Check if we hit a Cloudflare challenge
+  if echo "$output" | grep -q "Just a moment" || echo "$output" | grep -q "challenge-platform"; then
+    echo "Cloudflare detected, attempting bypass..." >&2
+    
+    # Add a delay to simulate human behavior
+    sleep 3
+    
+    # Try with additional Cloudflare bypass techniques
+    # 1. Add cookies
+    output=$("$CURL_PATH" -s -L -A "$UA" "${CF_HEADERS[@]}" \
+      -b "cf_clearance=$(date +%s)" \
+      --max-time 30 --retry 5 --retry-delay 3 \
+      "$url")
+  fi
+  
+  echo "$output"
+}
+
+# Cache directory
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/wcofun"
+mkdir -p "$CACHE_DIR"
+
+# Temp directory
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+# Base URL
+BASE_URL="https://www.wcofun.com"
+
+# Get page with Cloudflare bypass
+get_page() {
+  local url="$1"
+  local cache_file="$CACHE_DIR/$(echo "$url" | md5sum | cut -d' ' -f1)"
+  
+  # Use cache if it exists and is less than 1 hour old
+  if [ -f "$cache_file" ] && [ $(($(date +%s) - $(stat -c %Y "$cache_file"))) -lt 3600 ]; then
+    cat "$cache_file"
+  else
+    cf_bypass "$url" | tee "$cache_file"
+  fi
+}
+
+# Rest of your script...
+# (I'll include some basic functionality below)
+
+# Search for anime
+search_anime() {
+  local query="$1"
+  local search_url="${BASE_URL}/search?keyword=$(echo "$query" | tr ' ' '+')"
+  
+  get_page "$search_url" | grep -o '<a href="/anime/[^"]*"[^>]*>[^<]*</a>' | 
+    sed -E 's|<a href="/anime/([^"]*)"[^>]*>([^<]*)</a>|\2\t\1|g'
+}
+
+# Main menu
+main_menu() {
+  echo "1. Search Anime"
+  echo "2. Recent Episodes"
+  echo "3. Exit"
+  read -p "Choose an option: " choice
+  
+  case $choice in
+    1) 
+      read -p "Enter search term: " query
+      results=$(search_anime "$query")
+      echo "$results"
+      ;;
+    2)
+      get_page "$BASE_URL" | grep -o '<a href="/anime/[^"]*"[^>]*>[^<]*</a>' | 
+        sed -E 's|<a href="/anime/([^"]*)"[^>]*>([^<]*)</a>|\2\t\1|g' | head -10
+      ;;
+    3) exit 0 ;;
+    *) echo "Invalid option" ;;
+  esac
+}
+
+# Run main menu
+main_menu
