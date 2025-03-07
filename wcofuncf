@@ -9,10 +9,9 @@
 # MENU_CMD: Choose your menu.
 # NOTIFY_CMD: How to tell you about the status. Leave empty for a simple echo to stdout
 if [ -t 0 ] && [ -t 1 ] && [ -t 2 ] && [ -z ${DISPLAY+x} ]; then
-  then
     MENU_CMD="fzf"
     NOTIFY_CMD=""
-  else
+else
     MENU_CMD="rofi -dmenu -i"
     # MENU_CMD="dmenu"
     NOTIFY_CMD="notify-send WCOFUN"
@@ -52,13 +51,13 @@ CF_HEADERS=(
 # Function to handle Cloudflare challenges
 cf_bypass() {
   local url="$1"
-  local output
+  local output_file="${TMP_DIR}/cf_output_$(date +%s%N)"
   
-  # Try with standard curl first
-  output=$("$CURL_PATH" -s -L -A "$UA" "${CF_HEADERS[@]}" --max-time 20 --retry 3 --retry-delay 2 "$url")
+  # Try with standard curl first and save to file instead of variable
+  "$CURL_PATH" -s -L -A "$UA" "${CF_HEADERS[@]}" --max-time 20 --retry 3 --retry-delay 2 "$url" > "$output_file"
   
   # Check if we hit a Cloudflare challenge
-  if echo "$output" | grep -q "Just a moment" || echo "$output" | grep -q "challenge-platform"; then
+  if grep -q "Just a moment" "$output_file" || grep -q "challenge-platform" "$output_file"; then
     echo "Cloudflare detected, attempting bypass..." >&2
     
     # Add a delay to simulate human behavior
@@ -66,13 +65,15 @@ cf_bypass() {
     
     # Try with additional Cloudflare bypass techniques
     # 1. Add cookies
-    output=$("$CURL_PATH" -s -L -A "$UA" "${CF_HEADERS[@]}" \
+    "$CURL_PATH" -s -L -A "$UA" "${CF_HEADERS[@]}" \
       -b "cf_clearance=$(date +%s)" \
       --max-time 30 --retry 5 --retry-delay 3 \
-      "$url")
+      "$url" > "$output_file"
   fi
   
-  echo "$output"
+  # Remove null bytes before outputting
+  tr -d '\0' < "$output_file"
+  rm -f "$output_file"
 }
 
 # Cache directory
@@ -93,14 +94,14 @@ get_page() {
   
   # Use cache if it exists and is less than 1 hour old
   if [ -f "$cache_file" ] && [ $(($(date +%s) - $(stat -c %Y "$cache_file"))) -lt 3600 ]; then
-    cat "$cache_file"
+    tr -d '\0' < "$cache_file"
   else
-    cf_bypass "$url" | tee "$cache_file"
+    local output_file="${TMP_DIR}/page_output_$(date +%s%N)"
+    cf_bypass "$url" > "$output_file"
+    tr -d '\0' < "$output_file" | tee "$cache_file"
+    rm -f "$output_file"
   fi
 }
-
-# Rest of your script...
-# (I'll include some basic functionality below)
 
 # Search for anime
 search_anime() {
