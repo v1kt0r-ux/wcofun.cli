@@ -46,7 +46,7 @@ tar -xvzf htmlq-x86_64-linux.tar.gz
 ```bash
 sudo cp htmlq /usr/bin/
 ```
-  # or anywhere in your path
+  or anywhere in your path
 
 
 #### Arch Linux
