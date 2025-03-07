@@ -83,9 +83,10 @@ brew install coreutils htmlq jq fzf mpv
  ```bash
  ./wocfun search query here`
 If you want to download all episodes: `./wcofun -d Search query here`
-
 ```
-                     WCOFUN.CLI
+
+                     
+WCOFUN.CLI 
 ---------------------------------------------------------------------------------
 Syntax:
   /home/matheus/Projects/wcofun/wcofun [-n] [-s | -D | -d [range]] [search query]
